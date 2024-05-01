@@ -1,0 +1,18 @@
+html
+  head
+    title= title
+    link(rel='stylesheet', href='/stylesheets/style.css')
+  body
+    if authenticated
+      form(method="post", action="/logout")
+        button(type="submit") Sign out
+    else
+      form(method="get", action="/login")
+        button(type="submit") Sign in
+    
+    block content
+
+
+
+
+    

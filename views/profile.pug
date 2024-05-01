@@ -1,0 +1,19 @@
+extends layout
+
+block content
+  h2 My Profile
+  br
+  div
+    p Hello, #{user.displayName}
+  br
+  table
+    thead
+      tr
+        th Claim
+        th Value
+    tbody
+      for value, claim in user
+        tr
+          td #{claim}
+          td #{value}
+
