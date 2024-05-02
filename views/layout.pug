@@ -1,14 +1,14 @@
 html
   head
     title= title
-    link(rel='stylesheet', href='/stylesheets/style.css')
+    link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css')
   body
     if authenticated
-      form(method="post", action="/logout")
-        button(type="submit") Sign out
+      form.navbar-form.navbar-right(method="post", action="/logout")
+        button#logout-button.btn.btn-danger(type="submit") Sign out
     else
-      form(method="get", action="/login")
-        button(type="submit") Sign in
+      form.navbar-form.navbar-right(method="get", action="/login")
+        button#login-button.btn.btn-primary(type="submit") Sign in
     
     block content
 

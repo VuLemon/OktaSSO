@@ -2,4 +2,15 @@ extends layout
 
 block content
   h1= title
-  p Welcome to #{title}
+  if authenticated
+    div 
+      p It looks like you are already signed in with your okta SSO 
+      p Visit the #[a(href = "/profile") My profile page] for your information 
+      p Not you? Use the logout button at the corner of the page 
+  else 
+    div 
+      p Welcome. You can log in using your okta credentials 
+      p Use the login button at the corner of the page, and enter your okta dev account 
+      
+
+

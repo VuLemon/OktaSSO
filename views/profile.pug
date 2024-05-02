@@ -6,7 +6,7 @@ block content
   div
     p Hello, #{user.displayName}
   br
-  table
+  table.table.table-striped
     thead
       tr
         th Claim
@@ -16,5 +16,5 @@ block content
         tr
           td #{claim}
           td #{value}
-  form(method="post", action="/authenticate")
-    button(type="submit") Perform Action here
+  form.navbar-form.navbar-right(method="post", action="/authenticate")
+    button#authenticate-button.btn.btn-primary(type="submit") Perform Action here
