@@ -6,14 +6,19 @@ var logger = require('morgan');
 var session = require('express-session');
 var passport = require('passport');
 var qs = require('querystring');
+const crypto = require('crypto');
 var { Strategy } = require('passport-openidconnect');
+var nodemailer = require('nodemailer');
+
 require('dotenv').config();
 
 
-const {CLIENT_ID, CLIENT_SECRET, PORT, SESSION_SECRET, OKTA_DOMAIN} = process.env
+const {CLIENT_ID, CLIENT_SECRET, PORT, SESSION_SECRET, OKTA_DOMAIN, GMAIL, PASSWORD} = process.env
 
 let logoutURL = `http://${OKTA_DOMAIN}/oauth2/v1/logout`
 let id_token
+const requestStore = {}; 
+
 
 var indexRouter = require('./routes/index');
 
@@ -42,8 +47,8 @@ passport.use('oidc', new Strategy({
   authorizationURL: `https://${OKTA_DOMAIN}/oauth2/v1/authorize`,
   tokenURL: `https://${OKTA_DOMAIN}/oauth2/v1/token`,
   userInfoURL: `https://${OKTA_DOMAIN}/oauth2/v1/userinfo`,
-  clientID: `${CLIENT_ID}`,
-  clientSecret: `${CLIENT_SECRET}`,
+  clientID: CLIENT_ID,
+  clientSecret: CLIENT_SECRET,
   callbackURL: `http://localhost:${PORT}/authorization-code/callback`,
   scope: 'openid profile'
 }, (issuer, profile, context, idToken, accessToken, refreshToken, params, done) => {
@@ -66,7 +71,13 @@ passport.deserializeUser((obj, next) => {
   next(null, obj);
 });
 
+function ensureLoggedIn(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
 
+  res.redirect('/login')
+}
 
 
 // handles logistic
@@ -103,11 +114,73 @@ app.use('/authorization-code/callback',
   }
 );
 
-app.use('/profile', (req, res) => {
-  console.log(req.isAuthenticated());
+app.use('/profile', ensureLoggedIn, (req, res) => {
   res.render('profile', { authenticated: req.isAuthenticated(), user: req.user });
 });
 
+app.use('/authenticate', ensureLoggedIn, (req, res) => {
+
+  const { userId } = req.body;
+  const token = crypto.randomBytes(20).toString('hex');
+  requestStore[token] = {status: 'pending'};
+
+  
+  // Store the token with the user request in your database (pseudo-code)
+  // saveTokenToDB(token, userId);
+
+  const approveLink = `http://localhost:${PORT}/approve?token=${token}`;
+  const denyLink = `http://localhost:${PORT}/deny?token=${token}`;
+
+  let transporter = nodemailer.createTransport({
+    service: 'gmail', // Use your email service or SMTP server
+    auth: {
+      user: GMAIL,
+      pass: PASSWORD
+    }
+  })
+
+  let mailOptions = {
+    from: GMAIL,
+    to: GMAIL,
+    subject: 'Approval Request',
+    html: `<p>User ID ${userId} requested approval.</p>
+           <a href="${approveLink}">Approve</a> |
+           <a href="${denyLink}">Deny</a>`
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log('Error sending email:', error);
+      return res.status(500).json({ message: 'Error sending email' });
+    }
+    console.log('Email sent:', info.response);
+    res.status(200).json({ message: 'Request sent!' });
+  });
+})
+
+app.get('/approve', (req, res) => {
+  const { token } = req.query;
+  const request = requestStore[token];
+
+  if (!request || request.status !== 'pending') {
+    return res.status(400).send('Invalid or expired request.');
+  }
+
+  request.status = 'approved';
+  res.send('Request approved successfully!');
+});
+
+app.get('/deny', (req, res) => {
+  const { token } = req.query;
+  const request = requestStore[token];
+
+  if (!request || request.status !== 'pending') {
+    return res.status(400).send('Invalid or expired request.');
+  }
+
+  request.status = 'denied';
+  res.send('Request denied.');
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
